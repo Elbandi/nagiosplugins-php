@@ -14,4 +14,4 @@ Included Plugins;
 
 
 This is a project I built in 2008 and was originally hosting on Google Project 
-Hosting (http://code.google.com/p/nagiosplugins-php/downloads/list).
+Hosting (http://code.google.com/p/nagiosplugins-php).
