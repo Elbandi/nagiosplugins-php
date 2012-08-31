@@ -1,0 +1,194 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+
+//--------------------------------------------------------------------//
+// check_replication
+//--------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// DEFINE CONSTANTS
+//--------------------------------------------------------------------//
+
+define('MYSQL_REPLICATION_OK', 					200);
+define('MYSQL_REPLICATION_ERROR_CONNECT', 		400);
+define('MYSQL_REPLICATION_ERROR_QUERY', 		401);
+define('MYSQL_REPLICATION_ERROR_RESULT', 		402);
+define('MYSQL_REPLICATION_ERROR_FETCH', 		403);
+define('MYSQL_REPLICATION_ERROR_SLAVE',			500);
+define('MYSQL_REPLICATION_ERROR_IO', 			501);
+define('MYSQL_REPLICATION_ERROR_SQL', 			502);
+
+//--------------------------------------------------------------------//
+// SET STATUS MESSAGES
+//--------------------------------------------------------------------//
+
+$arrStatus = Array();
+$arrStatus[MYSQL_REPLICATION_OK]			= "Replication OK";
+$arrStatus[MYSQL_REPLICATION_ERROR_CONNECT]	= "MySQL Connection Error";
+$arrStatus[MYSQL_REPLICATION_ERROR_QUERY]	= "MySQL Query Error";
+$arrStatus[MYSQL_REPLICATION_ERROR_RESULT]	= "MySQL Result Error";
+$arrStatus[MYSQL_REPLICATION_ERROR_FETCH]	= "MySQL Fetch Error";
+$arrStatus[MYSQL_REPLICATION_ERROR_SLAVE]	= "Slave is not running (IO & SQL)";
+$arrStatus[MYSQL_REPLICATION_ERROR_IO]		= "Slave IO is not running";
+$arrStatus[MYSQL_REPLICATION_ERROR_SQL]		= "Slave SQL is not running";
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> -H hostname -u username -p password";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = NULL;
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+//--------------------------------------------------------------------//
+// REPLICATION PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class replicationPlugin extends nagiosPlugin
+{
+	private $_arrStatus;
+	
+	function __construct($arrStatus, $strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+		
+		$this->_arrStatus = $arrStatus;
+	}
+	
+	function execute()
+	{
+		// check for required options
+		if (!$this->arrOptions['hostname'] || !$this->arrOptions['username'] || !$this->arrOptions['password'])
+		{
+			// output help
+			$this->printHelp();
+		}
+		
+		// get status
+		$intStatus = $this->checkSlave($this->arrOptions['hostname'], $this->arrOptions['username'], $this->arrOptions['password']);
+	
+		// check status
+		if (!$strStatus = $this->_arrStatus[$intStatus])
+		{
+			// unknown status
+			$intNagiosStatus = STATE_UNKNOWN;	
+		}
+		elseif ($intStatus == MYSQL_REPLICATION_OK)
+		{
+			// replication is OK
+			$intNagiosStatus = STATE_OK;
+		}
+		else
+		{
+			// all errors are critical
+			$intNagiosStatus = STATE_CRITICAL;
+		}
+		
+		// output
+		$this->output($strStatus, $intNagiosStatus);
+	}
+	
+	function checkSlave($strServer, $strUser, $strPassword)
+	{
+		// connect to database server
+		$refMysql		= mysql_connect($strServer, $strUser, $strPassword);
+		if (!$refMysql)
+		{
+			return MYSQL_REPLICATION_ERROR_CONNECT;
+		}
+
+		// run query
+		$strQuery 		= "SHOW SLAVE STATUS;";
+		$refResult		= mysql_query($strQuery);
+		if (!$refResult)
+		{
+			return MYSQL_REPLICATION_ERROR_QUERY;
+		}
+
+		// fetch result
+		if (!mysql_num_rows($refResult))
+		{
+			return MYSQL_REPLICATION_ERROR_RESULT;
+		}
+		$arrResult = mysql_fetch_assoc($refResult);
+		if (!$arrResult)
+		{
+			return MYSQL_REPLICATION_ERROR_FETCH;
+		}
+		
+		// check result
+		if (trim(strtolower($arrResult['Slave_IO_Running'])) != 'yes')
+		{
+			if (trim(strtolower($arrResult['Slave_SQL_Running'])) != 'yes')
+			{
+				// IO & SQL are down
+				return MYSQL_REPLICATION_ERROR_SLAVE;
+			}
+			// IO is down
+			return MYSQL_REPLICATION_ERROR_IO;
+		}
+		if (trim(strtolower($arrResult['Slave_SQL_Running'])) != 'yes')
+		{
+			// SQL is down
+			return MYSQL_REPLICATION_ERROR_SQL;
+		}
+		
+		// disconnect from database server
+		mysql_close($refMysql);
+		
+		return MYSQL_REPLICATION_OK;
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new replicationPlugin( $arrStatus, $strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>

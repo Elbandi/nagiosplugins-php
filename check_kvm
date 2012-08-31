@@ -1,0 +1,252 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+ 
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+//
+// This plugin requires the kvmTools package and will not work with a
+// standard (non-kvmTools) kvm setup.
+
+//--------------------------------------------------------------------//
+// check_kvm
+//--------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// DEFINE CONSTANTS
+//--------------------------------------------------------------------//
+
+define('KVM_STATE_RUNNING', 			'running');
+define('KVM_STATE_BLOCKED', 			'blocked');
+define('KVM_STATE_PAUSED', 				'paused');
+define('KVM_STATE_SHUTDOWN', 			'shutdown');
+define('KVM_STATE_CRASHED', 			'crashed');
+define('KVM_STATE_DYING', 				'dying');
+define('KVM_STATE_STOPPED', 			'stopped');
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> [-w server[,server][...]] [-c server[,server][...]]";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = NULL;
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+
+//--------------------------------------------------------------------//
+// SKEL PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class kvmPlugin extends nagiosPlugin
+{
+	private $_intWarning 	= 0;
+	private $_intCritical 	= 0;
+	
+	function __construct($strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+	}
+	
+	function execute()
+	{	
+		// set default status
+		$intNagiosStatus = STATE_OK;
+		
+		// get kvm info
+		$strInfo = `/usr/bin/vminfo`;
+		$this->addVerbose("vminfo returned;\n{$strInfo}");
+		
+		if (!$strInfo)
+		{
+			// unknown status
+			$intNagiosStatus = STATE_UNKNOWN;	
+		}
+		else
+		{
+			// decode info
+			$arrInfo = $this->_decodeInfo($strInfo);
+			$this->addVerbose("vminfo decoded;\n".print_r($arrInfo, TRUE), 2);
+			
+			$intGuests = 0;
+			
+			// check each guest
+			foreach ($arrInfo AS $strGuest=>$arrGuest)
+			{
+				// Add notice & warnings for State
+				if ($arrGuest['state'] == KVM_STATE_RUNNING)
+				{
+					if ($arrGuest['id'])
+					{
+						$this->_addNotice("'{$arrGuest['name']}' is running on Id {$arrGuest['id']}");
+						$intGuests++;
+					}
+					else
+					{
+						$this->_addWarning("'{$arrGuest['name']}' is running but has no Id (strange!)");
+					}
+				}
+				else
+				{
+					$this->_addNotice("'{$arrGuest['name']}' has state {$arrGuest['state']}");
+				}
+				
+				// add warning for Image
+				if (!$arrGuest['image'])
+				{
+					$this->_addWarning("'{$arrGuest['name']}' has no disk image");
+				}
+				
+				// add warning for XML
+				if (!$arrGuest['xml'])
+				{
+					$this->_addWarning("'{$arrGuest['name']}' has no xml config");
+				}
+			}
+		}
+		
+		// check for any required guests
+		$this->_checkRequired('warning', $arrInfo);
+		$this->_checkRequired('critical', $arrInfo);
+		
+		// set status
+		if ($this->_intCritical)
+		{
+			$strStatus			= "CRITICAL : {$this->_intCritical} required KVM Guest(s) not running";
+			$intNagiosStatus 	= STATE_CRITICAL;
+		}
+		elseif ($this->_intWarning)
+		{
+			$strStatus			= "WARNING : {$this->_intWarning} required KVM Guest(s) not running";
+			$intNagiosStatus 	= STATE_WARNING;
+		}
+		elseif ($intNagiosStatus == STATE_OK)
+		{
+			$strStatus			= "OK : {$intGuests} KVM Guest(s) running";
+		}
+		
+		// output
+		$this->output($strStatus, $intNagiosStatus);
+	}
+	
+	private function _addWarning($strMessage)
+	{
+		$this->_intWarning++;
+		$this->addLongText("WARNING : $strMessage");
+	}
+	
+	private function _addNotice($strMessage)
+	{
+		$this->addLongText("NOTICE : $strMessage");
+	}
+	
+	private function _addCritical($strMessage)
+	{
+		$this->_intCritical++;
+		$this->addLongText("CRITICAL : $strMessage");
+	}
+	
+	private function _checkRequired($strType, $arrInfo)
+	{
+		$strMethod 		= "_add{$strType}";
+		$strProperty	= "_int{$strType}";
+		if ($this->arrOptions[$strType])
+		{
+			$arrRequired = explode(',', $this->arrOptions[$strType]);
+			foreach($arrRequired AS $strGuest)
+			{
+				if (!is_array($arrInfo[$strGuest]))
+				{
+					$this->{$strMethod}("'{$strGuest}' does not exist on this server");
+					$this->{$strProperty}++;
+				}
+				elseif ($arrInfo[$strGuest]['state'] !== KVM_STATE_RUNNING)
+				{
+					$this->{$strMethod}("'{$strGuest}' is NOT running");
+					$this->{$strProperty}++;
+				}
+			}
+		}	
+	}
+	
+	private function _decodeInfo($strInfo)
+	{
+		$arrReturn	= array();
+		$arrInfo 	= explode("\n", $strInfo);
+		if (is_array($arrInfo))
+		{
+			$strKeys = array_shift($arrInfo);
+			$arrKeys = explode('|', strtolower($strKeys));
+			if (!$arrKeys)
+			{
+				break;
+			}
+			foreach ($arrInfo AS $strGuest)
+			{
+				$arrGuest = explode('|', $strGuest);
+				if (!$arrGuest)
+				{
+					continue;
+				}
+				$arrDecoded = array();
+				foreach ($arrKeys AS $intKey=>$strKey)
+				{
+					$arrDecoded[$strKey] = $arrGuest[$intKey];
+				}
+				if ($arrDecoded['name'])
+				{
+					$arrReturn[$arrDecoded['name']] = $arrDecoded;
+				}
+			}
+		}
+		return $arrReturn;
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new kvmPlugin($strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>

@@ -1,0 +1,221 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+//
+// uses scp to read a timestamp from a remote file
+
+//--------------------------------------------------------------------//
+// check_scpt
+//--------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> -H hostname -u username -p password [-f file] [-F file] [-w seconds] [-c seconds] [-P port]";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = Array('f'=>'file:', 'F'=>'fail-file:', 'P'=>'port:');
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+
+//--------------------------------------------------------------------//
+// SKEL PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class scptPlugin extends nagiosPlugin
+{
+	
+	//------------------------------------------------------------------------//
+	// __construct
+	//------------------------------------------------------------------------//
+	/**
+	 * __construct()
+	 *
+	 * class constructor
+	 *
+	 * ensure that your constructor calls the parent constructor
+	 *
+	 * @param		string 		$strRevision	optional revision number of the plugin	  Default = NULL
+	 * @param		string 		$strUsage		optional usage example for the plugin	  Default = NULL
+	 * @param		string 		$strHelp		optional help message for the plugin	  Default = NULL
+	 * @param		array 		$arrOptions		optional array of command line options
+	 * 											to be parsed for the plugin. See the
+	 * 											nagiosPlugin::getOpt method in utils.php
+	 * 											for more details.						  Default = NULL
+	 * 											
+	 * @return  	void
+	 */
+	function __construct($strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+	}
+	
+	
+	//------------------------------------------------------------------------//
+	// execute
+	//------------------------------------------------------------------------//
+	/**
+	 * execute()
+	 *
+	 * execute the plugin
+	 *
+	 * the program logic of your plugin goes here
+	 * 
+	 *
+	 * @return  	void
+	 *
+	 *
+	 */
+	function execute()
+	{
+		// check for required options
+		if (!$this->arrOptions['hostname'] || !$this->arrOptions['username'] || !$this->arrOptions['password'] || (!$this->arrOptions['file'] && !$this->arrOptions['fail-file']))
+		{
+			// output help
+			$this->printHelp();
+		}
+		
+		// check for optional options (yeah, yeah... i said optional options... get over it)
+		if (!$intCritical = (int)$this->arrOptions['critical'])
+		{
+			// default critical to 30 hours
+			$intCritical = 108000;
+		}
+		if (!$intWarning = (int)$this->arrOptions['warning'])
+		{
+			// default warning to 25 hours
+			$intWarning = 90000;
+		}
+		if (!$intPort = (int)$this->arrOptions['port'])
+		{
+			// default port is 22
+			$intPort = 22;
+		}
+		
+		// connect to remote machine
+		$refScp			= ssh2_connect($this->arrOptions['hostname'], $intPort);
+		if (!$refScp)
+		{
+			$this->output('SCP Connect Failed', STATE_UNKNOWN);
+		}
+		
+		// send username & password
+		if (!ssh2_auth_password($refScp, $this->arrOptions['username'], $this->arrOptions['password']))
+		{
+			$this->output('SCP Login Failed', STATE_UNKNOWN);
+		}
+
+		// set temp file name
+		$strTempFile = uniqid('check_scpt', TRUE);
+		
+		// fetch fail file
+		if ($this->arrOptions['fail-file'])
+		{
+			$intFail = 0;
+			if (ssh2_scp_recv($refScp, $this->arrOptions['fail-file'], "/tmp/{$strTempFile}"))
+			{
+				$intFail = (int)file_get_contents("/tmp/{$strTempFile}");
+			}
+			
+			// remove temp file
+			unlink("/tmp/{$strTempFile}");
+			
+			// any failure is critical
+			if ($intFail)
+			{
+				$this->output("CRITICAL : Failed at " . date('Y-m-d H:i:s', $intFail), STATE_CRITICAL);
+			}
+		}
+		
+		// fetch success file
+		if ($this->arrOptions['file'])
+		{
+			$intSuccess = 0;
+			if (ssh2_scp_recv($refScp, $this->arrOptions['file'], "/tmp/{$strTempFile}"))
+			{
+				$intSuccess = (int)file_get_contents("/tmp/{$strTempFile}");
+			}
+			
+			// remove temp file
+			unlink("/tmp/{$strTempFile}");
+			
+			// get current timestamp
+			$intNow = time();
+			
+			// missing success is critical
+			if (!$intSuccess)
+			{
+				$this->output("CRITICAL : No timestamp found", STATE_CRITICAL);
+			}
+			
+			// check for critical
+			if ($intSuccess + $intCritical < $intNow)
+			{
+				$this->output("CRITICAL : Last Ok at " . date('Y-m-d H:i:s', $intSuccess), STATE_CRITICAL);
+			}
+			
+			// check for warning
+			if ($intSuccess + $intWarning < $intNow)
+			{
+				$this->output("WARNING : Last Ok at " . date('Y-m-d H:i:s', $intSuccess), STATE_WARNING);
+			}
+			
+			// if we get here then everything is ok
+			$this->output("OK : Last Ok at " . date('Y-m-d H:i:s', $intSuccess), STATE_OK);
+		}
+		
+		// output
+		$this->output("Something went wrong", STATE_UNKNOWN);
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new scptPlugin($strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>

@@ -1,0 +1,123 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+
+//--------------------------------------------------------------------//
+// check_skel
+//--------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> [options]";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = NULL;
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+
+//--------------------------------------------------------------------//
+// SKEL PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class skelPlugin extends nagiosPlugin
+{
+	
+	//------------------------------------------------------------------------//
+	// __construct
+	//------------------------------------------------------------------------//
+	/**
+	 * __construct()
+	 *
+	 * class constructor
+	 *
+	 * ensure that your constructor calls the parent constructor
+	 *
+	 * @param		string 		$strRevision	optional revision number of the plugin	  Default = NULL
+	 * @param		string 		$strUsage		optional usage example for the plugin	  Default = NULL
+	 * @param		string 		$strHelp		optional help message for the plugin	  Default = NULL
+	 * @param		array 		$arrOptions		optional array of command line options
+	 * 											to be parsed for the plugin. See the
+	 * 											nagiosPlugin::getOpt method in utils.php
+	 * 											for more details.						  Default = NULL
+	 * 											
+	 * @return  	void
+	 */
+	function __construct($strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+	}
+	
+	
+	//------------------------------------------------------------------------//
+	// execute
+	//------------------------------------------------------------------------//
+	/**
+	 * execute()
+	 *
+	 * execute the plugin
+	 *
+	 * the program logic of your plugin goes here
+	 * 
+	 *
+	 * @return  	void
+	 *
+	 *
+	 */
+	function execute()
+	{
+		// output
+		$this->output("Server is OK", STATE_OK);
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new skelPlugin($strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>

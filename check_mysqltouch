@@ -1,0 +1,187 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+//
+// create a mysql table with the following sql;
+/*
+ CREATE TABLE IF NOT EXISTS `Touch` (
+  `Id` bigint(20) unsigned NOT NULL,
+  `Timestamp` bigint(20) unsigned NOT NULL,
+  PRIMARY KEY  (`Id`)
+ ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+ */
+//
+// add a user with select privileges on the Touch table with sql like;
+/*
+ GRANT SELECT ON Touch TO 'nagios'@'localhost' IDENTIFIED BY 'password';
+ */
+// or
+/*
+ GRANT SELECT ON MyDatabase.Touch TO 'nagios'@'localhost' IDENTIFIED BY 'password';
+ */
+//
+// add a user with insert & update privileges on the Touch table with sql like;
+/*
+ GRANT UPDATE, INSERT ON Touch TO 'touch'@'localhost' IDENTIFIED BY 'password';
+ */
+// or
+/*
+ GRANT UPDATE, INSERT ON MyDatabase.Touch TO 'touch'@'localhost' IDENTIFIED BY 'password';
+ */
+//
+// obviously you'll want to replace 'password' with actual passwords
+//
+// to touch the MySQL database from the application or script you want to monitor,
+// use sql like; 
+/*
+ INSERT INTO `Touch` (`Id`, `Timestamp`) VALUES (1, UNIX_TIMESTAMP())
+ ON DUPLICATE KEY UPDATE `Timestamp` = UNIX_TIMESTAMP();
+ */
+
+//--------------------------------------------------------------------//
+// check_mysqltouch
+//--------------------------------------------------------------------//
+
+
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> -H hostname -u username -p password -d database -i id  [-w seconds] [-c seconds]";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = Array('i'=>'id:', 'd'=>'database:');
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+//--------------------------------------------------------------------//
+// REPLICATION PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class mysqltouchPlugin extends nagiosPlugin
+{
+	private $_arrStatus;
+	
+	function __construct($strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+	}
+	
+	function execute()
+	{
+		// check for required options
+		if (!$this->arrOptions['hostname'] || !$this->arrOptions['username'] || !$this->arrOptions['password'] || !(int)$this->arrOptions['id'] || !$this->arrOptions['database'])
+		{
+			// output help
+			$this->printHelp();
+		}
+		
+		// check for optional options (yeah, yeah... i said optional options... get over it)
+		if (!$intCritical = (int)$this->arrOptions['critical'])
+		{
+			// default critical to 1 hour
+			$intCritical = 3600;
+		}
+		if (!$intWarning = (int)$this->arrOptions['warning'])
+		{
+			// default warning to 1 hour
+			$intWarning = 3600;
+		}
+	
+		// connect to database server
+		$refMysql		= mysql_connect($this->arrOptions['hostname'], $this->arrOptions['username'], $this->arrOptions['password']);
+		if (!$refMysql)
+		{
+			$this->output('MySQL Connect Failed', STATE_UNKNOWN);
+		}
+		
+		// select database
+		$bolDb			= mysql_select_db($this->arrOptions['database'], $refMysql);
+		if (!$bolDb)
+		{
+			$this->output('MySQL Select Db Failed', STATE_UNKNOWN);
+		}
+
+		// run query
+		$strQuery 		= "SELECT UNIX_TIMESTAMP() - `Timestamp` AS `Seconds` FROM `Touch` WHERE Id = ".(int)$this->arrOptions['id']." LIMIT 1";
+		$refResult		= mysql_query($strQuery);
+		if (!$refResult)
+		{
+			$this->output('MySQL Query Failed', STATE_UNKNOWN);
+		}
+
+		// fetch result
+		if (!mysql_num_rows($refResult))
+		{
+			$this->output('CRITICAL : not touched', STATE_CRITICAL);
+		}
+		$arrResult = mysql_fetch_assoc($refResult);
+		if (!$arrResult)
+		{
+			$this->output('MySQL Fetch Failed', STATE_UNKNOWN);
+		}
+		
+		// check result
+		if ($arrResult['Seconds'] > $intCritical)
+		{
+			$this->output("CRITICAL : Last touched {$arrResult['Seconds']} seconds ago", STATE_CRITICAL);
+		}
+		elseif ($arrResult['Seconds'] > $intWarning)
+		{
+			$this->output("WARNING : Last touched {$arrResult['Seconds']} seconds ago", STATE_WARNING);
+		}
+		
+		// if we get here then everything is ok
+		$this->output("OK : Last touched {$arrResult['Seconds']} seconds ago", STATE_OK);
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new mysqltouchPlugin($strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>

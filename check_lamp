@@ -1,0 +1,165 @@
+#!/usr/bin/php5
+<?php
+//----------------------------------------------------------------------------//
+// nagiosPluginPHP (c) copyright 2008-2009 CYKO Pty Ltd
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+// THIS SOFTWARE IS GPL LICENSED
+//----------------------------------------------------------------------------//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License (version 2) as 
+//  published by the Free Software Foundation.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// NOTES
+//--------------------------------------------------------------------//
+//
+// This file should be installed in your nagios libexec folder
+// eg. /usr/local/nagios/libexec/
+//
+// checks that Apache, MySQL & PHP are running on a LAMP server
+// requires the lamp.php scrip installed on the server
+
+//--------------------------------------------------------------------//
+// check_lamp
+//--------------------------------------------------------------------//
+
+//--------------------------------------------------------------------//
+// CONFIG
+//--------------------------------------------------------------------//
+
+// revision
+$strRevision = "0.0.1";
+
+// usage
+$strUsage = "USAGE : <name> -H hostname [-u url] [-P port] [-s]";
+
+// help
+$strHelp = "";
+
+// options
+$arrOptions = Array('u'=>'url:', 'P'=>'port:', 's'=>'ssl');
+
+// basedir
+$strBaseDir	= "/usr/local/nagios/libexec/";
+
+
+//--------------------------------------------------------------------//
+// SKEL PLUGIN CLASS
+//--------------------------------------------------------------------//
+
+// require nagios class
+require_once($strBaseDir.'utils.php');
+
+class lampPlugin extends nagiosPlugin
+{
+	
+	//------------------------------------------------------------------------//
+	// __construct
+	//------------------------------------------------------------------------//
+	/**
+	 * __construct()
+	 *
+	 * class constructor
+	 *
+	 * ensure that your constructor calls the parent constructor
+	 *
+	 * @param		string 		$strRevision	optional revision number of the plugin	  Default = NULL
+	 * @param		string 		$strUsage		optional usage example for the plugin	  Default = NULL
+	 * @param		string 		$strHelp		optional help message for the plugin	  Default = NULL
+	 * @param		array 		$arrOptions		optional array of command line options
+	 * 											to be parsed for the plugin. See the
+	 * 											nagiosPlugin::getOpt method in utils.php
+	 * 											for more details.						  Default = NULL
+	 * 											
+	 * @return  	void
+	 */
+	function __construct($strRevision=NULL, $strUsage=NULL, $strHelp=NULL, $arrOptions=NULL)
+	{
+		// call parent constructor
+		parent::__construct($strRevision, $strUsage, $strHelp, $arrOptions);
+	}
+	
+	
+	//------------------------------------------------------------------------//
+	// execute
+	//------------------------------------------------------------------------//
+	/**
+	 * execute()
+	 *
+	 * execute the plugin
+	 *
+	 * the program logic of your plugin goes here
+	 * 
+	 *
+	 * @return  	void
+	 *
+	 *
+	 */
+	function execute()
+	{
+		// check for required options
+		if (!$this->arrOptions['hostname'])
+		{
+			// output help
+			$this->printHelp();
+		}
+		
+		// check for optional options (yeah, yeah... i said optional options... get over it)
+		if (!$intPort = (int)$this->arrOptions['port'])
+		{
+			// default port is 80
+			$intPort = 80;
+		}
+		if (!$strUrl = ltrim($this->arrOptions['url'], '/'))
+		{
+			// default url is /lamp.php
+			$strUrl = '/lamp.php';
+		}
+		if ($this->arrOptions['ssl'])
+		{
+			$strPrefix = "https://";
+		}
+		else
+		{
+			$strPrefix = "http://";	
+		}
+		
+		// connect to remote machine
+		$strResponse	= trim(file_get_contents("{$strPrefix}{$this->arrOptions['hostname']}:{$intPort}/{$strUrl}?uid=".uniqid('', TRUE)));
+		if (!$strResponse)
+		{
+			$this->output('Connect Failed', STATE_UNKNOWN);
+		}
+
+		if ($strResponse != 'OK')
+		{
+			$this->output("CRITICAL : LAMP Server is Down");
+		}
+			
+		// if we get here then everything is ok
+		$this->output("OK : LAMP Server is Up");
+	}
+}
+
+
+//--------------------------------------------------------------------//
+// SCRIPT
+//--------------------------------------------------------------------//
+
+$objPlugin = new lampPlugin($strRevision, $strUsage, $strHelp, $arrOptions);
+
+$objPlugin->execute();
+
+?>
