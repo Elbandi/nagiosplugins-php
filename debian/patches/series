@@ -1,0 +1,5 @@
+debian_path.patch
+fix_php_warnings.patch
+php_getopt53.patch
+remove_invalid_opts.patch
+valid_nagios_output.patch

@@ -1,0 +1,12 @@
+Source: nagiosplugins-php
+Section: net
+Priority: optional
+Maintainer: Andras Elso <elso.andras@gmail.com>
+Build-Depends: debhelper (>= 7), cdbs, quilt
+Standards-Version: 3.8.1
+
+Package: nagiosplugins-php
+Architecture: all
+Depends: nagios-plugins-basic
+Description: php toolkit for creating Nagios plugins
+ Use NagiosPluginsPhp as a base for creating your own Nagios Plugins in PHP

@@ -1,0 +1,28 @@
+--- a/utils.php
++++ b/utils.php
+@@ -103,14 +103,14 @@ class nagiosPlugin
+ 		$this->strName = basename($_SERVER['argv'][0]);
+ 
+ 		// check for help request
+-		if ($this->arrOptions['help'])
++		if (isset($this->arrOptions['help']))
+ 		{
+ 			// output help
+ 			$this->printHelp();
+ 		}
+ 		
+ 		// turn error reporting on for very verbose requests (-vvv)
+-		if ($this->arrOptions['verbose'] > 2)
++		if (isset($this->arrOptions['verbose']) && $this->arrOptions['verbose'] > 2)
+ 		{
+ 			error_reporting(E_ALL);
+ 		}
+@@ -466,7 +466,7 @@ class nagiosPlugin
+ 		}
+ 		
+ 		// calculate verbosity level
+-		if ($arrOutputOptions['verbose'])
++		if (isset($arrOutputOptions['verbose']))
+ 		{
+ 			if (($arrOutputOptions['verbose']) === TRUE)
+ 			{

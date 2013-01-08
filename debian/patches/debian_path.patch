@@ -1,0 +1,138 @@
+--- a/check_kvm
++++ b/check_kvm
+@@ -25,9 +25,6 @@
+ // NOTES
+ //--------------------------------------------------------------------//
+ //
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+-//
+ // This plugin requires the kvmTools package and will not work with a
+ // standard (non-kvmTools) kvm setup.
+ 
+@@ -64,7 +61,7 @@ $strHelp = "";
+ $arrOptions = NULL;
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ 
+ //--------------------------------------------------------------------//
+--- a/check_lamp
++++ b/check_lamp
+@@ -25,9 +25,6 @@
+ // NOTES
+ //--------------------------------------------------------------------//
+ //
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+-//
+ // checks that Apache, MySQL & PHP are running on a LAMP server
+ // requires the lamp.php scrip installed on the server
+ 
+@@ -52,7 +49,7 @@ $strHelp = "";
+ $arrOptions = Array('u'=>'url:', 'P'=>'port:', 's'=>'ssl');
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ 
+ //--------------------------------------------------------------------//
+--- a/check_mysqltouch
++++ b/check_mysqltouch
+@@ -25,9 +25,6 @@
+ // NOTES
+ //--------------------------------------------------------------------//
+ //
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+-//
+ // create a mysql table with the following sql;
+ /*
+  CREATE TABLE IF NOT EXISTS `Touch` (
+@@ -87,7 +84,7 @@ $strHelp = "";
+ $arrOptions = Array('i'=>'id:', 'd'=>'database:');
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ //--------------------------------------------------------------------//
+ // REPLICATION PLUGIN CLASS
+--- a/check_replication
++++ b/check_replication
+@@ -24,9 +24,6 @@
+ //--------------------------------------------------------------------//
+ // NOTES
+ //--------------------------------------------------------------------//
+-//
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+ 
+ //--------------------------------------------------------------------//
+ // check_replication
+@@ -76,7 +73,7 @@ $strHelp = "";
+ $arrOptions = NULL;
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ //--------------------------------------------------------------------//
+ // REPLICATION PLUGIN CLASS
+--- a/check_scpt
++++ b/check_scpt
+@@ -25,9 +25,6 @@
+ // NOTES
+ //--------------------------------------------------------------------//
+ //
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+-//
+ // uses scp to read a timestamp from a remote file
+ 
+ //--------------------------------------------------------------------//
+@@ -51,7 +48,7 @@ $strHelp = "";
+ $arrOptions = Array('f'=>'file:', 'F'=>'fail-file:', 'P'=>'port:');
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ 
+ //--------------------------------------------------------------------//
+--- a/check_skel
++++ b/check_skel
+@@ -24,9 +24,6 @@
+ //--------------------------------------------------------------------//
+ // NOTES
+ //--------------------------------------------------------------------//
+-//
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+ 
+ //--------------------------------------------------------------------//
+ // check_skel
+@@ -49,7 +46,7 @@ $strHelp = "";
+ $arrOptions = NULL;
+ 
+ // basedir
+-$strBaseDir	= "/usr/local/nagios/libexec/";
++$strBaseDir	= "/usr/lib/nagios/plugins/";
+ 
+ 
+ //--------------------------------------------------------------------//
+--- a/utils.php
++++ b/utils.php
+@@ -23,9 +23,6 @@
+ //--------------------------------------------------------------------//
+ // NOTES
+ //--------------------------------------------------------------------//
+-// 
+-// This file should be installed in your nagios libexec folder
+-// eg. /usr/local/nagios/libexec/
+ //
+ // see check_skel for usage example
+ //

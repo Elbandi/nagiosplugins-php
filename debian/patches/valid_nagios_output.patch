@@ -1,0 +1,42 @@
+--- a/utils.php
++++ b/utils.php
+@@ -311,31 +311,25 @@ class nagiosPlugin
+ 	{
+ 		// add text output
+ 		$strOutput = $strMessage;
+-		
+-		// add first line of performance data
+-		if (count($this->_arrPerformanceData))
++
++		// add long text lines
++		if (count($this->_arrLongText))
+ 		{
+-			$strOutput .= "|". array_shift($this->_arrPerformanceData);	
++			$strOutput .= " - ";
++			$strOutput .= implode(" ", $this->_arrLongText);
+ 		}
+-		$strOutput .= "\n";
+-		
+-		// add long text lines
+-		$strOutput .= implode("\n", $this->_arrLongText);
+-			
++
+ 		// add additional lines of performance data
+ 		if (count($this->_arrPerformanceData))
+ 		{
+ 			$strOutput .= "|";
+-			foreach ($this->_arrPerformanceData AS $strLine)
+-			{
+-				$strOutput .= $strLine ."\n";
+-			}	
++			$strOutput .= implode(" ", $this->_arrPerformanceData);
+ 		}
+ 		
+ 		// add a trailing \n
+ 		if (substr($strOutput, -1) != "\n")
+ 		{
+-			$strOutput	.= "\n";	
++			$strOutput	.= "\n";
+ 		}
+ 		
+ 		// return output

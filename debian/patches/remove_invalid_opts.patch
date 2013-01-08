@@ -1,0 +1,10 @@
+--- a/utils.php
++++ b/utils.php
+@@ -386,7 +386,6 @@ class nagiosPlugin
+ 		// reserved options
+ 		$arrOptions['V']	= "version";
+ 		$arrOptions['h']	= "help";
+-		$arrOptions['?']	= "help";
+ 		$arrOptions['t']	= "timeout:";
+ 		$arrOptions['w']	= "warning:";
+ 		$arrOptions['c']	= "critical:";

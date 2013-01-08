@@ -1,0 +1,13 @@
+--- a/utils.php
++++ b/utils.php
+@@ -440,8 +440,8 @@ class nagiosPlugin
+ 		}
+ 		
+ 		// get options
+-		//$arrReturnOptions = getopt($strOptions, array_unique($arrLongOptions)); //PHP 5.3 or better only
+-		$arrReturnOptions = getopt($strOptions);
++		$arrReturnOptions = getopt($strOptions, array_unique($arrLongOptions)); //PHP 5.3 or better only
++		//$arrReturnOptions = getopt($strOptions);
+ 		$arrOutputOptions = Array();
+ 		
+ 		// build output array
